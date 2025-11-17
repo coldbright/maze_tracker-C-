@@ -252,6 +252,7 @@ int main() {
     hideCursor();
     print_select_user();
 
+
 in:;
     setConsoleFontSize(4); // ? 메뉴 진입 시 폰트 크기 복원
     print_menu(0);
@@ -435,8 +436,7 @@ out:;
 
     // 4?? CPU 점유율 줄이기
     Sleep(30);
-}
-
+    }
 
     return 0;
 }
