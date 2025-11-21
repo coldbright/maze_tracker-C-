@@ -53,16 +53,6 @@ void moveCursor(int x, int y) {
     SetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE), pos);
 }
 
-// ? 콘솔 폰트 크기 변경 함수 (추가됨)
-void setConsoleFontSize(int sizeY) {
-    HANDLE hOut = GetStdHandle(STD_OUTPUT_HANDLE);
-    CONSOLE_FONT_INFOEX cfi = { sizeof(cfi) };
-
-    GetCurrentConsoleFontEx(hOut, FALSE, &cfi);
-    cfi.dwFontSize.Y = sizeY;        // 세로 폰트 크기
-    cfi.dwFontSize.X = sizeY / 2;    // 가로 비율 (가독성 유지)
-    SetCurrentConsoleFontEx(hOut, FALSE, &cfi);
-}
 
 void print_select_user() {
     printf("유저명을 입력하세요 : ");
@@ -70,7 +60,7 @@ void print_select_user() {
 }
 
 void print_menu(int stage) {
-    char difname[6][120] = { "Easy", "Medium", "Hard", "SUPER HARD", "IQ test(for fun, not Verified, Don\'t believe it)", "Ranking" };
+    char difname[3][120] = { "Practice Mod", "IQ test(for fun, not Verified, Don\'t believe it)", "Ranking" };
     system("cls");
     printf("------------------------------------------------------------------------------------------------------------------------\n");
     printf("         _              _                   _         _    _       ______\n");
@@ -83,7 +73,7 @@ void print_menu(int stage) {
     printf("                               |___/                                                        |_|\n");
     printf("------------------------------------------------------------------------------------------------------------------------\n");
 
-    for (register int i = 0; i < 6; i++)
+    for (register int i = 0; i < 3; i++)
         printf("   %s %s\n", stage == i ? ">>" : "  ", difname[i]);
 }
 
@@ -96,14 +86,48 @@ void print_ranking_menu(int stage) {
     printf("\nPress M to return to the main menu.\n");
 }
 
-void print_time_menu(int stage) {
+void print_practice_menu(int stage) {
     char difname[4][20] = { "Easy", "Medium", "Hard", "SUPER HARD" };
     system("cls");
+
     printf("Select a Difficulty for IQ Test\n");
-    for (register int i = 0; i < 4; i++)
+
+    // 메뉴 출력
+    for (int i = 0; i < 4; i++)
         printf("   %s %s\n", stage == i ? ">>" : "  ", difname[i]);
+
+    printf("\n");
+
+    // 선택된 stage 기준으로 '-' 출력
+    int lineWidth = 21 + stage * 14;
+
+    for (int i = 0; i < lineWidth; i++)
+        printf("■ \n");
+    printf("(여기까지 화면 크기를 맞춰주세요)\n");
     printf("\nPress M to return to the main menu.\n");
 }
+
+void print_IQ_menu(int stage) {
+    char difname[4][20] = { "Easy", "Medium", "Hard", "SUPER HARD" };
+    system("cls");
+
+    printf("Select a Difficulty for IQ Test\n");
+
+    // 메뉴 출력
+    for (int i = 0; i < 4; i++)
+        printf("   %s %s\n", stage == i ? ">>" : "  ", difname[i]);
+
+    printf("\n");
+
+    // 선택된 stage 기준으로 '-' 출력
+    int lineWidth = 21 + stage * 14;
+
+    for (int i = 0; i < lineWidth; i++)
+        printf("■ \n");
+    printf("(여기까지 화면 크기를 맞춰주세요)\n");
+    printf("\nPress M to return to the main menu.\n");
+}
+
 
 void print_ranking(int stage) {
     char *filename;
@@ -360,13 +384,11 @@ int bfsGraphShortestPath(int map[MAP_HEIGHT][MAP_WIDTH], int sx, int sy, int ex,
 
 int main() {
     time_t startTime = 0;
-    setConsoleSize(120, 50);
+    setConsoleSize(200, 100);
     hideCursor();
     print_select_user();
 
-
 in:;
-    setConsoleFontSize(4); // ? 메뉴 진입 시 폰트 크기 복원
     print_menu(0);
     stage = 0;
     move_count = 0;
@@ -377,10 +399,10 @@ in:;
             key = _getch();
             switch (key) {
             case 72: if (stage != 0) stage--; print_menu(stage); break;
-            case 80: if (stage != 5) stage++; print_menu(stage); break;
+            case 80: if (stage != 2) stage++; print_menu(stage); break;
             }
         } else if (key == 13) {
-            if (stage == 5) {
+            if (stage == 2) {
                 int ranking_stage = 0;
                 while (1) {
                     print_ranking_menu(ranking_stage);
@@ -398,10 +420,10 @@ in:;
                         break;
                     } else if (ranking_key == 109) goto in;
                 }
-            } else if (stage == 4) {
+            } else if (stage == 1) {
                 int time_stage = 0;
                 while (1) {
-                    print_time_menu(time_stage);
+                    print_IQ_menu(time_stage);
                     int time_key = _getch();
                     if (time_key == 224) {
                         time_key = _getch();
@@ -417,16 +439,25 @@ in:;
                     } else if (time_key == 109) goto in;
                 }
                 continue;
-            } else {
-                // ? 난이도별 폰트 크기 조정
-                if (stage == 0) setConsoleFontSize(16);
-                else if (stage == 1) setConsoleFontSize(12);
-                else if (stage == 2) setConsoleFontSize(6);
-                else if (stage == 3) setConsoleFontSize(4);
-
-                width = 21 + stage * 14;
-                height = width;
-                goto out;
+            } else if (stage == 0) {
+                int time_stage = 0;
+                while (1) {
+                    print_IQ_menu(time_stage);
+                    int time_key = _getch();
+                    if (time_key == 224) {
+                        time_key = _getch();
+                        switch (time_key) {
+                            case 72: if (time_stage != 0) time_stage--; break;
+                            case 80: if (time_stage != 3) time_stage++; break;
+                        }
+                    } else if (time_key == 13) {
+                        width = 21 + time_stage * 14;
+                        height = width;
+                        timer_on = 0;
+                        goto out;
+                    } else if (time_key == 109) goto in;
+                }
+                continue;
             }
         } else if (key == 109) {
             goto in;
@@ -519,16 +550,26 @@ out:;
 
             system("cls");
 
-            // 재미용 IQ 계산 공식
-            double efficiency = (double)shortestPathResult / (playTime + 1);
-            double IQ = 100 + (efficiency * 15) - (playTime * 0.4);
+            //iq 계산 부분
+            int moveDifference = move_count - shortestPathResult;
+            if (moveDifference < 0) moveDifference = 0;
 
-            if (IQ < 50) IQ = 50;
-            if (IQ > 160) IQ = 160;
+            // 이동 효율
+            double moveEfficiency = (double)shortestPathResult / (move_count + 1);
+
+            // 시간 효율
+            double timeEfficiency = (double)shortestPathResult / (playTime + 1);
+
+            // 최종 IQ 계산 (이동 40%, 시간 30% 반영)
+            double IQ = 100 + (moveEfficiency * 20) + (timeEfficiency * 20) - (moveDifference * 20);
+
+            // 범위 제한
+            // if (IQ < 50) IQ = 50;
+            // if (IQ > 160) IQ = 160;
 
             printf("\n\n");
             printf("============================================================\n");
-            printf("               ? IQ TEST RESULT (BETA) ?\n");
+            printf("                 IQ TEST RESULT (BETA)  \n");
             printf("============================================================\n\n");
 
             printf(" ▶ 플레이어 클리어 시간 : %d초\n", playTime);
