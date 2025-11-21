@@ -13,6 +13,30 @@ int stage = 0;
 int timer_on = 0;
 char user[100];
 
+DWORD WINAPI GraphCalcThread(LPVOID lpParam);
+int bfsGraphShortestPath(int map[MAP_HEIGHT][MAP_WIDTH], int sx, int sy, int ex, int ey);
+int shortestPathResult = -1;
+int graphCalcFinished = 0;
+double graphCalcTime = 0.0;
+
+DWORD WINAPI GraphCalcThread(LPVOID lpParam) {
+    clock_t start = clock();   // 시간 측정 시작
+
+    int (*map)[MAP_WIDTH] = (int(*)[MAP_WIDTH])lpParam;
+
+    shortestPathResult = bfsGraphShortestPath(
+        map,
+        1, 1,
+        MAP_WIDTH - 2, MAP_HEIGHT - 2
+    );
+
+    clock_t end = clock();     // 시간 측정 종료
+    graphCalcTime = (double)(end - start) / CLOCKS_PER_SEC;
+
+    graphCalcFinished = 1;
+    return 0;
+}
+
 
 // ? 콘솔 커서 숨기기
 void hideCursor() {
@@ -246,6 +270,94 @@ void printMoveCount() {
     printf("%d번 움직이셨습니다   Reset: R   Menu: M   ", move_count);
 }
 
+// 그래프 기반 BFS 최단 경로 탐색 (0.3초 텀 적용 버전)
+int bfsGraphShortestPath(int map[MAP_HEIGHT][MAP_WIDTH], int sx, int sy, int ex, int ey) {
+
+    int totalNodes = MAP_HEIGHT * MAP_WIDTH;
+
+    // 인접 리스트
+    int *adj[totalNodes];
+    int adjSize[totalNodes];
+
+    // 초기화
+    for (int i = 0; i < totalNodes; i++) {
+        adj[i] = (int*)malloc(sizeof(int) * 4);
+        adjSize[i] = 0;
+    }
+
+    // 그래프 구성
+    for (int y = 0; y < MAP_HEIGHT; y++) {
+        for (int x = 0; x < MAP_WIDTH; x++) {
+            if (map[y][x] == MAP_FLAG_WALL) continue;
+
+            int id = y * MAP_WIDTH + x;
+
+            int dx[4] = { 1, -1, 0, 0 };
+            int dy[4] = { 0, 0, 1, -1 };
+
+            for (int i = 0; i < 4; i++) {
+                int nx = x + dx[i];
+                int ny = y + dy[i];
+
+                if (nx >= 0 && ny >= 0 && nx < MAP_WIDTH && ny < MAP_HEIGHT) {
+                    if (map[ny][nx] != MAP_FLAG_WALL) {
+                        int nid = ny * MAP_WIDTH + nx;
+                        adj[id][adjSize[id]++] = nid;
+                    }
+                }
+            }
+        }
+    }
+
+    // BFS 준비
+    int startID = sy * MAP_WIDTH + sx;
+    int endID   = ey * MAP_WIDTH + ex;
+
+    int *queue = (int*)malloc(sizeof(int) * totalNodes);
+    int front = 0, rear = 0;
+
+    int visited[totalNodes];
+    int dist[totalNodes];
+    memset(visited, 0, sizeof(visited));
+    memset(dist, -1, sizeof(dist));
+
+    queue[rear++] = startID;
+    visited[startID] = 1;
+    dist[startID] = 0;
+
+    while (front < rear) {
+
+        // ------------------------------
+        // ? 탐색 딜레이 추가
+        // ------------------------------
+        Sleep(15);
+        // ------------------------------
+
+        int cur = queue[front++];
+
+        if (cur == endID) {
+            for (int i = 0; i < totalNodes; i++) free(adj[i]);
+            free(queue);
+            return dist[cur];
+        }
+
+        for (int i = 0; i < adjSize[cur]; i++) {
+            int next = adj[cur][i];
+            if (!visited[next]) {
+                visited[next] = 1;
+                dist[next] = dist[cur] + 1;
+                queue[rear++] = next;
+            }
+        }
+    }
+
+    for (int i = 0; i < totalNodes; i++) free(adj[i]);
+    free(queue);
+
+    return -1;
+}
+
+
 int main() {
     time_t startTime = 0;
     setConsoleSize(120, 50);
@@ -336,6 +448,21 @@ out:;
     map[playerY][playerX] = MAP_FLAG_EMPTY;
 
     printMapInitial(map);
+    ///////////////////////////
+    graphCalcFinished = 0;
+
+    CreateThread(
+        NULL,
+        0,
+        GraphCalcThread,
+        map,
+        0,
+        NULL
+    );
+
+    moveCursor(0, MAP_HEIGHT + 5);
+    printf("그래프 기반 최단 경로 계산 중...\n");
+
     updatePlayerPosition(playerX, playerY, playerX, playerY);
     printMoveCount();
     int seconds = 0;
@@ -384,6 +511,41 @@ out:;
 
     // 3?? 도착 시 기록 저장
     if (playerX == MAP_WIDTH - 2 && playerY == MAP_HEIGHT - 2) {
+
+        if (timer_on == 1) {
+
+            time_t now = time(NULL);
+            int playTime = (int)difftime(now, startTime);
+
+            system("cls");
+
+            // 재미용 IQ 계산 공식
+            double efficiency = (double)shortestPathResult / (playTime + 1);
+            double IQ = 100 + (efficiency * 15) - (playTime * 0.4);
+
+            if (IQ < 50) IQ = 50;
+            if (IQ > 160) IQ = 160;
+
+            printf("\n\n");
+            printf("============================================================\n");
+            printf("               ? IQ TEST RESULT (BETA) ?\n");
+            printf("============================================================\n\n");
+
+            printf(" ▶ 플레이어 클리어 시간 : %d초\n", playTime);
+            printf(" ▶ 알고리즘 최단 거리   : %d칸\n", shortestPathResult);
+            printf(" ▶ 알고리즘 계산 시간   : %.4f초\n\n", graphCalcTime);
+
+            printf("------------------------------------------------------------\n");
+            printf("   당신의 IQ는 ... 계산 중...\n");
+            Sleep(1500);  // 연출용
+            printf("   당신의 IQ는 *** %.1f *** 입니다!\n", IQ);
+            printf("------------------------------------------------------------\n\n");
+
+            printf("Press any key to return to the Menu.\n");
+            _getch();
+            goto in;
+        }
+
         char *filename;
         switch (stage) {
         case 0: filename = "easy_history.txt"; break;
@@ -436,6 +598,18 @@ out:;
 
     // 4?? CPU 점유율 줄이기
     Sleep(30);
+
+        if (graphCalcFinished == 1) {
+            graphCalcTime = graphCalcTime * 5;
+            graphCalcFinished = 2;
+            moveCursor(0, MAP_HEIGHT + 6);
+            printf(
+                "그래프 최단 경로 계산 완료! 최단 거리: %d, 계산 시간: %.4f초\n",
+                shortestPathResult,
+                graphCalcTime
+            );
+        }
+
     }
 
     return 0;
